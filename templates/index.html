@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatSlide.ai</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', path='/css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Add this loading overlay at the start of body -->
+    <div class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing your request...</div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Left Panel -->
+            <div class="col-md-4 left-panel">
+                <h2 class="mb-4">ChatSlide.ai</h2>
+                
+                <!-- File Upload -->
+                <div class="mb-4">
+                    <label class="form-label">Select Data File</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control" id="fileInput" accept=".csv,.xlsx,.json">
+                        <button class="btn btn-primary" id="uploadBtn">Upload</button>
+                    </div>
+                </div>
+
+                <!-- Data Preview -->
+                <div class="data-preview mb-4">
+                    <h4>Data Preview</h4>
+                    <div id="dataPreview" class="preview-content">
+                        No data uploaded yet
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="chat-input">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="commandInput" placeholder="Enter your command...">
+                        <button class="btn btn-primary" id="sendBtn">Send</button>
+                    </div>
+                </div>
+
+                <!-- Progress -->
+                <div class="progress mt-3 d-none" id="progressBar">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="col-md-8 right-panel">
+                <!-- Chart Display -->
+                <div class="chart-container">
+                    <iframe id="chartFrame" src="about:blank" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+</body>
+</html> 

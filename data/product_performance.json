@@ -1,0 +1,88 @@
+{
+  "products": [
+    {
+      "name": "Laptop Pro",
+      "metrics": {
+        "satisfaction": 4.5,
+        "reliability": 4.2,
+        "performance": 4.8,
+        "value": 3.9,
+        "design": 4.6
+      },
+      "sales_by_quarter": [
+        {
+          "quarter": "Q1",
+          "units": 1200
+        },
+        {
+          "quarter": "Q2",
+          "units": 1450
+        },
+        {
+          "quarter": "Q3",
+          "units": 1800
+        },
+        {
+          "quarter": "Q4",
+          "units": 2100
+        }
+      ]
+    },
+    {
+      "name": "Tablet X",
+      "metrics": {
+        "satisfaction": 4.3,
+        "reliability": 4.4,
+        "performance": 4.1,
+        "value": 4.5,
+        "design": 4.7
+      },
+      "sales_by_quarter": [
+        {
+          "quarter": "Q1",
+          "units": 2300
+        },
+        {
+          "quarter": "Q2",
+          "units": 2500
+        },
+        {
+          "quarter": "Q3",
+          "units": 2800
+        },
+        {
+          "quarter": "Q4",
+          "units": 3200
+        }
+      ]
+    },
+    {
+      "name": "Smartphone Y",
+      "metrics": {
+        "satisfaction": 4.6,
+        "reliability": 4.3,
+        "performance": 4.5,
+        "value": 4.2,
+        "design": 4.8
+      },
+      "sales_by_quarter": [
+        {
+          "quarter": "Q1",
+          "units": 5200
+        },
+        {
+          "quarter": "Q2",
+          "units": 5800
+        },
+        {
+          "quarter": "Q3",
+          "units": 6300
+        },
+        {
+          "quarter": "Q4",
+          "units": 7100
+        }
+      ]
+    }
+  ]
+}
