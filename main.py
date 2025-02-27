@@ -1,9 +1,9 @@
+from tenacity import retry, stop_after_attempt, wait_exponential
 import asyncio
 import typer
-from rich import print
+from rich import print as rich_print
 from src.agent.chart_agent import ChartAgent
 from src.utils.file_handler import FileHandler
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 app = typer.Typer()
 chart_agent = ChartAgent()
@@ -20,7 +20,7 @@ async def async_process_file(data, command):
             raise ValueError("No chart configuration generated")
         return chart_config
     except Exception as e:
-        print(f"[yellow]Retrying due to error: {str(e)}[/yellow]")
+        rich_print(f"[yellow]Retrying due to error: {str(e)}[/yellow]")
         raise
 
 @app.command()
@@ -33,10 +33,10 @@ def process_file(
     """
     try:
         # Load and process the file
-        print("[yellow]Loading file...[/yellow]")
+        rich_print("[yellow]Loading file...[/yellow]")
         data = file_handler.load_file(file_path)
         
-        print("[yellow]Processing command with AI...[/yellow]")
+        rich_print("[yellow]Processing command with AI...[/yellow]")
         
         # Create new event loop for async operation
         loop = asyncio.new_event_loop()
@@ -51,23 +51,22 @@ def process_file(
             if not chart_config:
                 raise ValueError("No chart configuration was generated")
                 
-            print("[green]Chart configuration generated successfully[/green]")
-            print("Configuration:", chart_config)
+            rich_print("[green]Chart configuration generated successfully[/green]")
+            rich_print("Configuration:", chart_config)
             
             # Save and display the chart
-            print("[yellow]Saving chart...[/yellow]")
+            rich_print("[yellow]Saving chart...[/yellow]")
             output_path = file_handler.save_chart(chart_config)
-            print(f"[green]Chart saved successfully at: {output_path}[/green]")
+            rich_print(f"[green]Chart saved successfully at: {output_path}[/green]")
             
         except asyncio.TimeoutError:
-            print("[red]Operation timed out after 60 seconds[/red]")
+            rich_print("[red]Operation timed out after 60 seconds[/red]")
             raise
         finally:
             loop.close()
             
-    except Exception as e:
-        print(f"[red]Error in process_file: {str(e)}[/red]")
-        raise
+    except (ValueError, TypeError, FileNotFoundError) as e:  # Specify relevant exceptions
+        rich_print(f"[red]Error: {str(e)}[/red]")
 
 @app.command()
 def update_chart(
@@ -83,10 +82,10 @@ def update_chart(
         loop.close()
         
         output_path = file_handler.save_chart(updated_config)
-        print(f"[green]Chart updated successfully at: {output_path}[/green]")
+        rich_print(f"[green]Chart updated successfully at: {output_path}[/green]")
         
     except Exception as e:
-        print(f"[red]Error: {str(e)}[/red]")
+        rich_print(f"[red]Error: {str(e)}[/red]")
 
 if __name__ == "__main__":
     app() 

@@ -1,20 +1,24 @@
+import os
+from typing import Dict, Any
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
-import os
 import aiofiles
 from src.agent.chart_agent import ChartAgent
 from src.utils.file_handler import FileHandler
-from typing import Dict, Any
 
 class AppState:
+    """Class to manage the application state, including current file data."""
+    
     def __init__(self):
         self.current_file_data = None
 
 class ChartAPI:
+    """Class to handle chart-related API operations."""
+    
     def __init__(self):
         self.state = AppState()
         self.chart_agent = ChartAgent()
@@ -51,7 +55,7 @@ class ChartAPI:
                 "preview": preview
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     async def process_chart_command(self, command: str) -> Dict:
         """Handle chart generation command"""
@@ -64,13 +68,13 @@ class ChartAPI:
             output_path = self.file_handler.save_chart(chart_config)
             return {
                 "status": "success",
-                "chart_path": f"/output/chart.html",
+                "chart_path": "/output/chart.html",
                 "config": chart_config,
                 "candidate_questions": candidate_questions,
                 "output_path": output_path
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     async def update_existing_chart(self, command: str) -> Dict:
         """Handle chart update command"""
@@ -93,12 +97,12 @@ class ChartAPI:
             
             return {
                 "status": "success",
-                "chart_path": f"/output/chart.html" if updated_config else "",
+                "chart_path": "/output/chart.html",
                 "config": updated_config,
                 "candidate_questions": candidate_questions,
                 "output_path": output_path
             }
-        except Exception as e:
+        except (ValueError, TypeError, KeyError) as e:  # Specify relevant exceptions
             print(f"Error in update_existing_chart: {str(e)}")
             # Return a more graceful error response
             return {

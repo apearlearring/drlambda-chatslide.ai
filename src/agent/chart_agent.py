@@ -102,7 +102,7 @@ class ChartAgent:
                 }
         
         except Exception as e:
-            raise ValueError(f"Error updating chart: {str(e)}")
+            raise ValueError(f"Error updating chart: {str(e)}") from e
     
     def _prepare_context(self, data: Any, command: str) -> Dict:
         """Prepare context for AI processing"""
@@ -239,7 +239,7 @@ class ChartAgent:
                         "candidate_questions": ["I couldn't understand the data. Could you try a simpler request?"]
                     }
             
-        except Exception as e:
+        except (ValueError, TypeError, json.JSONDecodeError) as e:
             print(f"Error in _generate_config: {str(e)}")
             # Return a graceful error response instead of raising an exception
             return {
@@ -312,7 +312,6 @@ Generate the Chart.js configuration now, and if the prompt is unclear, provide 3
                 data = pd.DataFrame(data)
             except (ValueError, TypeError) as e:
                 print(f"Warning: Failed to convert data to DataFrame: {str(e)}")
-                pass
             
         analysis = {
             "columns": {},
