@@ -86,17 +86,30 @@ class ChartAPI:
                 updated_config = response
                 candidate_questions = []
             
-            output_path = self.file_handler.save_chart(updated_config)
-            print(updated_config)
+            # Only save chart if we have a valid config
+            output_path = ""
+            if updated_config:
+                output_path = self.file_handler.save_chart(updated_config)
+            
             return {
                 "status": "success",
-                "chart_path": f"/output/chart.html",
+                "chart_path": f"/output/chart.html" if updated_config else "",
                 "config": updated_config,
                 "candidate_questions": candidate_questions,
                 "output_path": output_path
             }
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            print(f"Error in update_existing_chart: {str(e)}")
+            # Return a more graceful error response
+            return {
+                "status": "error",
+                "detail": str(e),
+                "candidate_questions": [
+                    "There was an error processing your request. Please try again.",
+                    "Is your data in the correct format?",
+                    "Try a different command."
+                ]
+            }
 
 # Initialize FastAPI app
 app = FastAPI(title="ChatSlide.ai")

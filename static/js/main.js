@@ -215,8 +215,13 @@ async function sendCommand(command) {
         
         if (data.status === 'success') {
             showProgress(100);
-            displayChart(data.chart_path, data.output_path);
-            currentCommand = command;
+            
+            // Only display chart if we have a valid chart_path
+            if (data.chart_path) {
+                displayChart(data.chart_path, data.output_path);
+                currentCommand = command;
+            }
+            
             document.getElementById('commandInput').value = ''; // Clear input after success
             
             console.log('candidate questions:', data.candidate_questions);
@@ -229,11 +234,40 @@ async function sendCommand(command) {
                 document.getElementById('candidateQuestionsContainer').innerHTML = '';
             }
         } else {
-            throw new Error(data.detail);
+            // Handle error but still show candidate questions if available
+            showProgress(100);
+            console.error('Error:', data.detail);
+            
+            // Show error message
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'alert alert-danger';
+            errorMessage.textContent = `Error: ${data.detail}`;
+            
+            const container = document.getElementById('candidateQuestionsContainer');
+            container.innerHTML = '';
+            container.appendChild(errorMessage);
+            
+            // Still display candidate questions if available
+            if (data.candidate_questions && data.candidate_questions.length > 0) {
+                displayCandidateQuestions(data.candidate_questions);
+            }
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error processing command: ' + error.message);
+        
+        // Show error in a more user-friendly way
+        const container = document.getElementById('candidateQuestionsContainer');
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Error processing command: ${error.message}
+            </div>
+            <div class="candidate-question">
+                Try a simpler command
+            </div>
+            <div class="candidate-question">
+                Check if your data is in the correct format
+            </div>
+        `;
     } finally {
         setLoadingState(false);
         hideProgress();

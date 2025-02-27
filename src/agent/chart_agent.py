@@ -77,9 +77,29 @@ class ChartAgent:
                 "current_config": self.current_config
             }
             
-            updated_config = await self._generate_config(context)
-            self.current_config = updated_config
-            return updated_config
+            # Generate updated configuration using AI
+            response = await self._generate_config(context)
+            
+            # Check if response is a dict with chart_config and candidate_questions
+            if isinstance(response, dict):
+                chart_config = response.get("chart_config")
+                candidate_questions = response.get("candidate_questions", [])
+                
+                # Update current config if we got a new one
+                if chart_config:
+                    self.current_config = chart_config
+                    
+                return {
+                    "chart_config": chart_config,
+                    "candidate_questions": candidate_questions
+                }
+            else:
+                # Handle legacy format (just the config)
+                self.current_config = response
+                return {
+                    "chart_config": response,
+                    "candidate_questions": []
+                }
         
         except Exception as e:
             raise ValueError(f"Error updating chart: {str(e)}")
@@ -164,34 +184,72 @@ class ChartAgent:
 
             user_prompt = self._create_prompt(context)
             
-            async with asyncio.timeout(30):
-                response = await self.client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=0.3,  # Lower temperature for more precise output
-                    max_tokens=2000,
-                    response_format={"type": "json_object"}  # Force JSON output
-                )
-            
-            content = response.choices[0].message.content
-            # Check if the response contains candidate questions
-            if "candidate questions" in content.lower():
-                # Extract candidate questions
-                candidate_questions = self._extract_candidate_questions(content)
+            try:
+                async with asyncio.timeout(60):  # Increase timeout to 60 seconds
+                    response = await self.client.chat.completions.create(
+                        model="gpt-4-turbo-preview",
+                        messages=[
+                            {"role": "system", "content": system_message},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.3,  # Lower temperature for more precise output
+                        max_tokens=2000,
+                        response_format={"type": "json_object"}  # Force JSON output
+                    )
+            except asyncio.TimeoutError:
+                # Handle timeout specifically
                 return {
-                    "candidate_questions": candidate_questions,
-                    "chart_config": None  # No chart config yet
+                    "chart_config": None,
+                    "candidate_questions": ["Could you simplify your request? The previous one timed out."]
                 }
             
-            print(content)
+            content = response.choices[0].message.content
+            print("Raw AI response:", content)
             
-            return json.loads(content)
+            try:
+                # Try to parse as JSON
+                parsed_content = json.loads(content)
+                
+                # Check if it has the expected structure
+                if "chart_config" in parsed_content:
+                    return parsed_content
+                elif "candidate_questions" in parsed_content:
+                    return {
+                        "chart_config": None,
+                        "candidate_questions": parsed_content["candidate_questions"]
+                    }
+                else:
+                    # If it's valid JSON but missing expected keys, wrap it as chart_config
+                    return {
+                        "chart_config": parsed_content,
+                        "candidate_questions": []
+                    }
+            except json.JSONDecodeError:
+                # If JSON parsing fails, extract candidate questions from text
+                candidate_questions = self._extract_candidate_questions(content)
+                if candidate_questions:
+                    return {
+                        "chart_config": None,
+                        "candidate_questions": candidate_questions
+                    }
+                else:
+                    # If we can't extract questions, return a fallback error
+                    return {
+                        "chart_config": None,
+                        "candidate_questions": ["I couldn't understand the data. Could you try a simpler request?"]
+                    }
             
         except Exception as e:
-            raise ValueError(f"Error generating chart configuration: {str(e)}") from e
+            print(f"Error in _generate_config: {str(e)}")
+            # Return a graceful error response instead of raising an exception
+            return {
+                "chart_config": None,
+                "candidate_questions": [
+                    f"An error occurred: {str(e)}. Could you try a different request?",
+                    "Is your data in the correct format?",
+                    "Try simplifying your request."
+                ]
+            }
     
     def _create_prompt(self, context: Dict) -> str:
         """Create a precise prompt for the AI"""
