@@ -45,13 +45,19 @@ class ChartAgent:
         # Generate chart configuration using AI
         response = await self._generate_config(context)
         chart_config = response.get("chart_config")
-        candidate_questions = response.get("candidate_questions")
+        candidate_questions = response.get("candidate_questions", [])
         
         print("complete the processing command")
         print(chart_config)
-        print(candidate_questions)
-        self.current_config = chart_config
-        return chart_config
+        
+        # Store the current configuration
+        if chart_config:
+            self.current_config = chart_config
+        
+        return {
+            "chart_config": chart_config,
+            "candidate_questions": candidate_questions
+        }
     
     async def update_chart(self, command: str) -> Dict:
         """Update existing chart based on new command"""
@@ -374,11 +380,42 @@ Generate the Chart.js configuration now, and if the prompt is unclear, provide 3
 
     def _extract_candidate_questions(self, content: str) -> List[str]:
         """Extract candidate questions from the AI response"""
-        # Assuming the candidate questions are listed in a specific format
-        # This is a simple example; you may need to adjust the parsing logic
-        lines = content.splitlines()
+        try:
+            # First try to parse as JSON
+            data = json.loads(content)
+            if isinstance(data, dict) and "candidate_questions" in data:
+                return data["candidate_questions"]
+        except json.JSONDecodeError:
+            pass
+        
+        # If JSON parsing fails, try to extract from text
         questions = []
+        lines = content.splitlines()
+        
+        # Look for sections that might contain questions
+        in_questions_section = False
         for line in lines:
-            if line.strip().startswith("-"):
-                questions.append(line.strip()[1:].strip())  # Remove leading '- ' and whitespace
+            line = line.strip()
+            
+            # Check if we're entering a questions section
+            if "candidate questions" in line.lower() or "follow-up questions" in line.lower():
+                in_questions_section = True
+                continue
+            
+            # If we're in a questions section, extract questions
+            if in_questions_section:
+                # Skip empty lines or section headers
+                if not line or line.endswith(':'):
+                    continue
+                    
+                # Check for common question formats
+                if line.startswith('-') or line.startswith('*'):
+                    questions.append(line[1:].strip())
+                elif line.startswith('1.') or line.startswith('2.') or line.startswith('3.'):
+                    # Extract numbered questions
+                    questions.append(line[line.find('.')+1:].strip())
+                elif '?' in line:
+                    # If it contains a question mark, it's probably a question
+                    questions.append(line)
+        
         return questions 

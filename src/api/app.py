@@ -60,7 +60,7 @@ class ChartAPI:
                 raise HTTPException(status_code=400, detail="No file uploaded")
             response = await self.chart_agent.process_command(self.state.current_file_data, command)
             chart_config = response.get("chart_config")
-            candidate_questions = response.get("candidate_questions")
+            candidate_questions = response.get("candidate_questions", [])  # Default to empty list
             output_path = self.file_handler.save_chart(chart_config)
             return {
                 "status": "success",
@@ -76,13 +76,23 @@ class ChartAPI:
         """Handle chart update command"""
         try:
             print("Updating chart...")
-            updated_config = await self.chart_agent.update_chart(command)
+            response = await self.chart_agent.update_chart(command)
+            
+            # Check if response is a dict (new format) or just the config (old format)
+            if isinstance(response, dict) and "chart_config" in response:
+                updated_config = response.get("chart_config")
+                candidate_questions = response.get("candidate_questions", [])
+            else:
+                updated_config = response
+                candidate_questions = []
+            
             output_path = self.file_handler.save_chart(updated_config)
             print(updated_config)
             return {
                 "status": "success",
                 "chart_path": f"/output/chart.html",
                 "config": updated_config,
+                "candidate_questions": candidate_questions,
                 "output_path": output_path
             }
         except Exception as e:
