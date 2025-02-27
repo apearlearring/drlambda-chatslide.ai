@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatSlide.ai</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="{{ url_for('static', path='/css/style.css') }}" rel="stylesheet">
 </head>
 <body>
-    <!-- Add this loading overlay at the start of body -->
+    <!-- Loading overlay -->
     <div class="loading-overlay">
         <div class="spinner"></div>
         <div class="loading-text">Processing your request...</div>
@@ -18,20 +19,20 @@
         <div class="row">
             <!-- Left Panel -->
             <div class="col-md-4 left-panel">
-                <h2 class="mb-4">ChatSlide.ai</h2>
+                <h2 class="app-title"><i class="fas fa-chart-line me-2"></i>ChatSlide.ai</h2>
                 
                 <!-- File Upload -->
                 <div class="mb-4">
-                    <label class="form-label">Select Data File</label>
+                    <h4 class="section-heading"><i class="fas fa-file-upload me-2"></i>Select Data File</h4>
                     <div class="input-group">
                         <input type="file" class="form-control" id="fileInput" accept=".csv,.xlsx,.json">
-                        <button class="btn btn-primary" id="uploadBtn">Upload</button>
+                        <button class="btn btn-primary" id="uploadBtn"><i class="fas fa-upload me-1"></i>Upload</button>
                     </div>
                 </div>
 
                 <!-- Data Preview -->
                 <div class="data-preview mb-4">
-                    <h4>Data Preview</h4>
+                    <h4 class="section-heading"><i class="fas fa-table me-2"></i>Data Preview</h4>
                     <div id="dataPreview" class="preview-content">
                         No data uploaded yet
                     </div>
@@ -39,9 +40,10 @@
 
                 <!-- Chat Input -->
                 <div class="chat-input">
+                    <h4 class="section-heading"><i class="fas fa-comment-alt me-2"></i>Command Input</h4>
                     <div class="input-group">
                         <input type="text" class="form-control" id="commandInput" placeholder="Enter your command...">
-                        <button class="btn btn-primary" id="sendBtn">Send</button>
+                        <button class="btn btn-primary" id="sendBtn"><i class="fas fa-paper-plane me-1"></i>Send</button>
                     </div>
                     <div id="candidateQuestionsContainer" class="mt-3"></div>
                 </div>
@@ -63,6 +65,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}"></script>
 </body>
 </html> 

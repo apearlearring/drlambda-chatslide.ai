@@ -58,6 +58,37 @@ function setLoadingState(loading, message = 'Processing your request...') {
     }
 }
 
+// Add this function to the beginning of your main.js file
+document.addEventListener('DOMContentLoaded', function() {
+    // Custom file input styling
+    const fileInput = document.getElementById('fileInput');
+    const fileInputLabel = document.createElement('label');
+    fileInputLabel.className = 'custom-file-input-label';
+    fileInputLabel.innerHTML = '<i class="fas fa-file me-1"></i> Choose File';
+    fileInputLabel.htmlFor = 'fileInput';
+    
+    // Hide the original file input
+    fileInput.style.display = 'none';
+    
+    // Create a file name display element
+    const fileNameDisplay = document.createElement('span');
+    fileNameDisplay.className = 'file-name-display';
+    fileNameDisplay.textContent = 'No file selected';
+    
+    // Insert the custom elements
+    fileInput.parentNode.insertBefore(fileInputLabel, fileInput);
+    fileInput.parentNode.insertBefore(fileNameDisplay, fileInput.nextSibling);
+    
+    // Update file name display when a file is selected
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            fileNameDisplay.textContent = fileInput.files[0].name;
+        } else {
+            fileNameDisplay.textContent = 'No file selected';
+        }
+    });
+});
+
 // File Upload Handler
 document.getElementById('uploadBtn').addEventListener('click', async () => {
     if (isProcessing) return;

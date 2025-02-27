@@ -103,86 +103,63 @@ class ChartAgent:
 2. Classify data types (numerical, categorical, temporal) and understand their real-world meaning.
 3. Transform data precisely according to user requests, ensuring transformations align with both data types and contextual meaning.
 4. Generate valid Chart.js configurations based on the analysis of the data and the user's prompt.
-5. Everytime generate 3-5 candidate questions to clarify the user's intent. These questions should help narrow down the user's requirements and ensure accurate chart generation.
-6. Follow json structure to include exact Chart.js syntax and structure and extra questions to clarify the user's intent: 
-    for example:
-        {
-            "chart_config": {
-                "type": "bar",
-                "data": {
-                    "labels": [],
-                    "datasets": []
-                },
-                "options": {
-                }
+5. Please make sure that the chart_config is not None and has correct syntax.
+6. Always generate 3-5 candidate questions to clarify the user's intent. These questions should help narrow down the user's requirements and ensure accurate chart generation.
+7. Follow this exact JSON structure to include Chart.js configuration and clarification questions:
+    {
+        "chart_config": {
+            "type": "bar|line|pie|doughnut|radar|polarArea|bubble|scatter",
+            "data": {
+                "labels": ["label1", "label2", ...],
+                "datasets": [
+                    {
+                        "label": "Dataset Label",
+                        "data": [value1, value2, ...],
+                        "backgroundColor": ["color1", "color2", ...],
+                        "borderColor": ["color1", "color2", ...],
+                        // other dataset properties as needed
+                    }
+                ]
             },
-            "candidate_questions": ["question1", "question2", "question3"]
-        }
+            "options": {
+                "scales": {
+                    "x": {
+                        "title": {
+                            "display": true,
+                            "text": "X-Axis Label"
+                        }
+                    },
+                    "y": {
+                        "title": {
+                            "display": true,
+                            "text": "Y-Axis Label"
+                        }
+                    }
+                },
+                "plugins": {
+                    "title": {
+                        "display": true,
+                        "text": "Chart Title"
+                    },
+                    "legend": {
+                        "position": "top"
+                    }
+                },
+                // other chart options as needed
+            }
+        },
+        "candidate_questions": [
+            "Question 1?",
+            "Question 2?",
+            "Question 3?"
+        ]
+    }
 
-ALWAYS:
-- Output only the Chart.js configuration JSON.
-- Use double quotes for JSON strings.
-- Include complete data transformations in the datasets.
-- Follow Chart.js v3+ syntax.
-- Provide insights based on the data analysis to inform the chart configuration.
-- Handle special cases based on data context, not just data type.
-- Filter out irrelevant data categories that don't match the user's intent.
-- Understand the semantic meaning of data categories and filter accordingly.
-- Consider the real-world meaning of data values when processing user requests.
-- Choose appropriate chart types based on data characteristics and user intent.
-- Set sensible defaults for colors, labels, and other visual elements.
-- Include proper axis formatting and scales.
-
-SPECIAL CASES:
-- For categorical data: Distinguish between active/current vs. inactive/historical/special statuses.
-- When user requests focus on specific category types, exclude unrelated categories even if they share similar naming.
-- For financial data: Distinguish between different financial metrics appropriately.
-- For temporal data: Handle different time granularities appropriately.
-- For status-based data: Understand the difference between various status types and their relationships.
-- For comparison requests: Highlight differences using appropriate visual techniques.
-- For trend analysis: Use line charts with proper time-based x-axis configuration.
-- For part-to-whole relationships: Use pie or doughnut charts with percentage calculations.
-- For distribution data: Consider histograms or box plots with appropriate binning.
-
-CHART TYPE SELECTION:
-- Bar charts: For comparing quantities across categories
-- Line charts: For showing trends over time or continuous variables
-- Pie/Doughnut charts: For showing composition or part-to-whole relationships
-- Scatter plots: For showing correlation between two variables
-- Radar charts: For comparing multiple variables in a radial layout
-- Bubble charts: For showing relationships between three variables
-- Polar area charts: For showing cyclical or proportional data in a radial layout
-
-NEVER:
-- Include irrelevant categories that don't match the semantic intent of the user's request.
-- Include explanations or markdown.
-- Use single quotes.
-- Skip required Chart.js options.
-- Output incomplete JSON.
-- Ignore the context of the user's prompt or the characteristics of the input data.
-- Choose inappropriate chart types for the data structure or user intent.
-
-Example:
-
-    Input:
-        subscription_tier,count
-        ULTIMATE_MONTHLY,1
-        CANCELLED_ULTIMATE_MONTHLY,2
-        ULTIMATE_LIFETIME,1
-        PRO_YEARLY,5
-        CANCELLED_PLUS_YEARLY,5
-        CANCELLED_PRO_YEARLY,2
-        PRO_MONTHLY,8
-        ULTIMATE_YEARLY,2
-        FREE,4353
-        INTENDED,73
-        PLUS_MONTHLY,7
-        PLUS_YEARLY,5
-        CANCELLED_PLUS_MONTHLY,17
-        CANCELLED_PRO_MONTHLY,20
-    User prompt: Show me the number of active subscriptions by tier.
-    
-    In this case, please don't include the FREE category in the chart.
+8. Ensure all JSON keys and values use double quotes, not single quotes.
+9. For color values, use standard CSS color names, hex codes, or rgba() format.
+10. Include proper axis formatting with titles and scales appropriate to the data.
+11. Set sensible defaults for colors, labels, and other visual elements.
+12. For time-series data, use the appropriate time scale configuration.
 """
 
             user_prompt = self._create_prompt(context)
