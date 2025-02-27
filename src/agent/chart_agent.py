@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
@@ -43,10 +43,13 @@ class ChartAgent:
         print(context)
         
         # Generate chart configuration using AI
-        chart_config = await self._generate_config(context)
+        response = await self._generate_config(context)
+        chart_config = response.get("chart_config")
+        candidate_questions = response.get("candidate_questions")
+        
         print("complete the processing command")
         print(chart_config)
-        
+        print(candidate_questions)
         self.current_config = chart_config
         return chart_config
     
@@ -94,7 +97,21 @@ class ChartAgent:
 2. Classify data types (numerical, categorical, temporal) and understand their real-world meaning.
 3. Transform data precisely according to user requests, ensuring transformations align with both data types and contextual meaning.
 4. Generate valid Chart.js configurations based on the analysis of the data and the user's prompt.
-5. Follow exact Chart.js syntax and structure.
+5. Everytime generate 3-5 candidate questions to clarify the user's intent. These questions should help narrow down the user's requirements and ensure accurate chart generation.
+6. Follow json structure to include exact Chart.js syntax and structure and extra questions to clarify the user's intent: 
+    for example:
+        {
+            "chart_config": {
+                "type": "bar",
+                "data": {
+                    "labels": [],
+                    "datasets": []
+                },
+                "options": {
+                }
+            },
+            "candidate_questions": ["question1", "question2", "question3"]
+        }
 
 ALWAYS:
 - Output only the Chart.js configuration JSON.
@@ -139,7 +156,6 @@ NEVER:
 - Ignore the context of the user's prompt or the characteristics of the input data.
 - Choose inappropriate chart types for the data structure or user intent.
 
-
 Example:
 
     Input:
@@ -178,6 +194,17 @@ Example:
                 )
             
             content = response.choices[0].message.content
+            # Check if the response contains candidate questions
+            if "candidate questions" in content.lower():
+                # Extract candidate questions
+                candidate_questions = self._extract_candidate_questions(content)
+                return {
+                    "candidate_questions": candidate_questions,
+                    "chart_config": None  # No chart config yet
+                }
+            
+            print(content)
+            
             return json.loads(content)
             
         except Exception as e:
@@ -234,7 +261,7 @@ REQUIREMENTS:
    - Sort data when appropriate
    - Handle multiple categories
 
-Generate the Chart.js configuration now:"""
+Generate the Chart.js configuration now, and if the prompt is unclear, provide 3-5 candidate questions for clarification:"""
 
     def _analyze_data_structure(self, data: Any) -> Dict:
         """Analyze data structure with enhanced detail"""
@@ -242,7 +269,8 @@ Generate the Chart.js configuration now:"""
         if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
             try:
                 data = pd.DataFrame(data)
-            except Exception:
+            except (ValueError, TypeError) as e:
+                print(f"Warning: Failed to convert data to DataFrame: {str(e)}")
                 pass
             
         analysis = {
@@ -335,11 +363,22 @@ Generate the Chart.js configuration now:"""
                 analysis["data_type"] = "dictionary"
                 analysis["structure"] = {
                     "keys": list(data.keys()),
-                    "sample_values": {k: str(type(v)).__name__ for k, v in data.items()}
+                    "sample_values": {k: type(v).__name__ for k, v in data.items()}
                 }
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, pd.errors.EmptyDataError) as e:
             print(f"Warning: Error analyzing data structure: {str(e)}")
             analysis["error"] = str(e)
 
         return analysis 
+
+    def _extract_candidate_questions(self, content: str) -> List[str]:
+        """Extract candidate questions from the AI response"""
+        # Assuming the candidate questions are listed in a specific format
+        # This is a simple example; you may need to adjust the parsing logic
+        lines = content.splitlines()
+        questions = []
+        for line in lines:
+            if line.strip().startswith("-"):
+                questions.append(line.strip()[1:].strip())  # Remove leading '- ' and whitespace
+        return questions 

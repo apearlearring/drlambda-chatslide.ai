@@ -38,6 +38,8 @@ class ChartAPI:
     async def process_file_upload(self, file: UploadFile) -> Dict:
         """Handle file upload process"""
         try:
+            
+            print("Processing file upload...")
             file_path = await self.save_upload_file(file)
             self.state.current_file_data = self.file_handler.load_file(file_path)
             print(self.state.current_file_data)
@@ -56,17 +58,15 @@ class ChartAPI:
         try:
             if self.state.current_file_data is None:
                 raise HTTPException(status_code=400, detail="No file uploaded")
-            
-            chart_config = await self.chart_agent.process_command(
-                self.state.current_file_data, 
-                command
-            )
+            response = await self.chart_agent.process_command(self.state.current_file_data, command)
+            chart_config = response.get("chart_config")
+            candidate_questions = response.get("candidate_questions")
             output_path = self.file_handler.save_chart(chart_config)
-            
             return {
                 "status": "success",
                 "chart_path": f"/output/chart.html",
                 "config": chart_config,
+                "candidate_questions": candidate_questions,
                 "output_path": output_path
             }
         except Exception as e:
