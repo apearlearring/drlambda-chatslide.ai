@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
@@ -43,12 +43,21 @@ class ChartAgent:
         print(context)
         
         # Generate chart configuration using AI
-        chart_config = await self._generate_config(context)
+        response = await self._generate_config(context)
+        chart_config = response.get("chart_config")
+        candidate_questions = response.get("candidate_questions", [])
+        
         print("complete the processing command")
         print(chart_config)
         
-        self.current_config = chart_config
-        return chart_config
+        # Store the current configuration
+        if chart_config:
+            self.current_config = chart_config
+        
+        return {
+            "chart_config": chart_config,
+            "candidate_questions": candidate_questions
+        }
     
     async def update_chart(self, command: str) -> Dict:
         """Update existing chart based on new command"""
@@ -68,12 +77,32 @@ class ChartAgent:
                 "current_config": self.current_config
             }
             
-            updated_config = await self._generate_config(context)
-            self.current_config = updated_config
-            return updated_config
+            # Generate updated configuration using AI
+            response = await self._generate_config(context)
+            
+            # Check if response is a dict with chart_config and candidate_questions
+            if isinstance(response, dict):
+                chart_config = response.get("chart_config")
+                candidate_questions = response.get("candidate_questions", [])
+                
+                # Update current config if we got a new one
+                if chart_config:
+                    self.current_config = chart_config
+                    
+                return {
+                    "chart_config": chart_config,
+                    "candidate_questions": candidate_questions
+                }
+            else:
+                # Handle legacy format (just the config)
+                self.current_config = response
+                return {
+                    "chart_config": response,
+                    "candidate_questions": []
+                }
         
         except Exception as e:
-            raise ValueError(f"Error updating chart: {str(e)}")
+            raise ValueError(f"Error updating chart: {str(e)}") from e
     
     def _prepare_context(self, data: Any, command: str) -> Dict:
         """Prepare context for AI processing"""
@@ -89,42 +118,138 @@ class ChartAgent:
     async def _generate_config(self, context: Dict) -> Dict:
         """Generate chart configuration using AI"""
         try:
-            system_message = """You are a Chart.js configuration expert. Your role is to:
-1. Transform data precisely according to user requests
-2. Generate valid Chart.js configurations
-3. Follow exact Chart.js syntax and structure
+            system_message = """You are a Chart.js configuration expert and a data analysis assistant. Your role is to:
+1. Analyze both the input data structure and the semantic context of the data.
+2. Classify data types (numerical, categorical, temporal) and understand their real-world meaning.
+3. Transform data precisely according to user requests, ensuring transformations align with both data types and contextual meaning.
+4. Generate valid Chart.js configurations based on the analysis of the data and the user's prompt.
+5. Please make sure that the chart_config is not None and has correct syntax.
+6. Always generate 3-5 candidate questions to clarify the user's intent. These questions should help narrow down the user's requirements and ensure accurate chart generation.
+7. Follow this exact JSON structure to include Chart.js configuration and clarification questions:
+    {
+        "chart_config": {
+            "type": "bar|line|pie|doughnut|radar|polarArea|bubble|scatter",
+            "data": {
+                "labels": ["label1", "label2", ...],
+                "datasets": [
+                    {
+                        "label": "Dataset Label",
+                        "data": [value1, value2, ...],
+                        "backgroundColor": ["color1", "color2", ...],
+                        "borderColor": ["color1", "color2", ...],
+                        // other dataset properties as needed
+                    }
+                ]
+            },
+            "options": {
+                "scales": {
+                    "x": {
+                        "title": {
+                            "display": true,
+                            "text": "X-Axis Label"
+                        }
+                    },
+                    "y": {
+                        "title": {
+                            "display": true,
+                            "text": "Y-Axis Label"
+                        }
+                    }
+                },
+                "plugins": {
+                    "title": {
+                        "display": true,
+                        "text": "Chart Title"
+                    },
+                    "legend": {
+                        "position": "top"
+                    }
+                },
+                // other chart options as needed
+            }
+        },
+        "candidate_questions": [
+            "Question 1?",
+            "Question 2?",
+            "Question 3?"
+        ]
+    }
 
-ALWAYS:
-- Output only the Chart.js configuration JSON
-- Use double quotes for JSON strings
-- Include complete data transformations in the datasets
-- Follow Chart.js v3+ syntax
-
-NEVER:
-- Include explanations or markdown
-- Use single quotes
-- Skip required Chart.js options
-- Output incomplete JSON"""
+8. Ensure all JSON keys and values use double quotes, not single quotes.
+9. For color values, use standard CSS color names, hex codes, or rgba() format.
+10. Include proper axis formatting with titles and scales appropriate to the data.
+11. Set sensible defaults for colors, labels, and other visual elements.
+12. For time-series data, use the appropriate time scale configuration.
+"""
 
             user_prompt = self._create_prompt(context)
             
-            async with asyncio.timeout(30):
-                response = await self.client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=0.3,  # Lower temperature for more precise output
-                    max_tokens=2000,
-                    response_format={"type": "json_object"}  # Force JSON output
-                )
+            try:
+                async with asyncio.timeout(60):  # Increase timeout to 60 seconds
+                    response = await self.client.chat.completions.create(
+                        model="gpt-4-turbo-preview",
+                        messages=[
+                            {"role": "system", "content": system_message},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.3,  # Lower temperature for more precise output
+                        max_tokens=2000,
+                        response_format={"type": "json_object"}  # Force JSON output
+                    )
+            except asyncio.TimeoutError:
+                # Handle timeout specifically
+                return {
+                    "chart_config": None,
+                    "candidate_questions": ["Could you simplify your request? The previous one timed out."]
+                }
             
             content = response.choices[0].message.content
-            return json.loads(content)
+            print("Raw AI response:", content)
             
-        except Exception as e:
-            raise ValueError(f"Error generating chart configuration: {str(e)}")
+            try:
+                # Try to parse as JSON
+                parsed_content = json.loads(content)
+                
+                # Check if it has the expected structure
+                if "chart_config" in parsed_content:
+                    return parsed_content
+                elif "candidate_questions" in parsed_content:
+                    return {
+                        "chart_config": None,
+                        "candidate_questions": parsed_content["candidate_questions"]
+                    }
+                else:
+                    # If it's valid JSON but missing expected keys, wrap it as chart_config
+                    return {
+                        "chart_config": parsed_content,
+                        "candidate_questions": []
+                    }
+            except json.JSONDecodeError:
+                # If JSON parsing fails, extract candidate questions from text
+                candidate_questions = self._extract_candidate_questions(content)
+                if candidate_questions:
+                    return {
+                        "chart_config": None,
+                        "candidate_questions": candidate_questions
+                    }
+                else:
+                    # If we can't extract questions, return a fallback error
+                    return {
+                        "chart_config": None,
+                        "candidate_questions": ["I couldn't understand the data. Could you try a simpler request?"]
+                    }
+            
+        except (ValueError, TypeError, json.JSONDecodeError) as e:
+            print(f"Error in _generate_config: {str(e)}")
+            # Return a graceful error response instead of raising an exception
+            return {
+                "chart_config": None,
+                "candidate_questions": [
+                    f"An error occurred: {str(e)}. Could you try a different request?",
+                    "Is your data in the correct format?",
+                    "Try simplifying your request."
+                ]
+            }
     
     def _create_prompt(self, context: Dict) -> str:
         """Create a precise prompt for the AI"""
@@ -177,7 +302,7 @@ REQUIREMENTS:
    - Sort data when appropriate
    - Handle multiple categories
 
-Generate the Chart.js configuration now:"""
+Generate the Chart.js configuration now, and if the prompt is unclear, provide 3-5 candidate questions for clarification:"""
 
     def _analyze_data_structure(self, data: Any) -> Dict:
         """Analyze data structure with enhanced detail"""
@@ -185,8 +310,8 @@ Generate the Chart.js configuration now:"""
         if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
             try:
                 data = pd.DataFrame(data)
-            except Exception:
-                pass
+            except (ValueError, TypeError) as e:
+                print(f"Warning: Failed to convert data to DataFrame: {str(e)}")
             
         analysis = {
             "columns": {},
@@ -278,11 +403,53 @@ Generate the Chart.js configuration now:"""
                 analysis["data_type"] = "dictionary"
                 analysis["structure"] = {
                     "keys": list(data.keys()),
-                    "sample_values": {k: str(type(v)).__name__ for k, v in data.items()}
+                    "sample_values": {k: type(v).__name__ for k, v in data.items()}
                 }
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, pd.errors.EmptyDataError) as e:
             print(f"Warning: Error analyzing data structure: {str(e)}")
             analysis["error"] = str(e)
 
         return analysis 
+
+    def _extract_candidate_questions(self, content: str) -> List[str]:
+        """Extract candidate questions from the AI response"""
+        try:
+            # First try to parse as JSON
+            data = json.loads(content)
+            if isinstance(data, dict) and "candidate_questions" in data:
+                return data["candidate_questions"]
+        except json.JSONDecodeError:
+            pass
+        
+        # If JSON parsing fails, try to extract from text
+        questions = []
+        lines = content.splitlines()
+        
+        # Look for sections that might contain questions
+        in_questions_section = False
+        for line in lines:
+            line = line.strip()
+            
+            # Check if we're entering a questions section
+            if "candidate questions" in line.lower() or "follow-up questions" in line.lower():
+                in_questions_section = True
+                continue
+            
+            # If we're in a questions section, extract questions
+            if in_questions_section:
+                # Skip empty lines or section headers
+                if not line or line.endswith(':'):
+                    continue
+                    
+                # Check for common question formats
+                if line.startswith('-') or line.startswith('*'):
+                    questions.append(line[1:].strip())
+                elif line.startswith('1.') or line.startswith('2.') or line.startswith('3.'):
+                    # Extract numbered questions
+                    questions.append(line[line.find('.')+1:].strip())
+                elif '?' in line:
+                    # If it contains a question mark, it's probably a question
+                    questions.append(line)
+        
+        return questions 
